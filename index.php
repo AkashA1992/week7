@@ -5,7 +5,7 @@ error_reporting(E_ALL);
 $obj = new main();
 
 class main {
- 
+    protected $message;
     public function __construct(){ 
         $serverName = "sql1.njit.edu";
         $userName = "ara59";
@@ -13,51 +13,78 @@ class main {
         $query="SELECT * FROM accounts where id<6";     
 
         try {              
-            $hmtlObj= createHtml::setConnection($serverName,$userName,$password,$query);               
-            $result=new createHtml($hmtlObj);
+            $conn= createHtml::openConnection($serverName,$userName,$password); 
+            stringFunctions::printMessage("Connected successfully <br>");
+            $htmlObj= createHtml::fetchData($conn,$query);            
+            $result=new createHtml($htmlObj);
         }
         catch(PDOException $e){
-            echo "Connection failed: " . $e->getMessage()."<br>";
+            stringFunctions::printMessage("Connection failed: " . $e->getMessage()."<br>");
         }        
     }  
 }
 
-//Used to construct and destroy PDO connection
+//Used to Open and close PDO connection and fetch data from database
 abstract class pdoConnection {
-    protected $html;    
-
-    public static function setConnection($serverName,$userName,$password,$query){ 
+    protected $html;  
+    
+    public function __construct(){        
+        $this->html .= '<html>';        
+        $this->html .= '<body>';
+    }    
+    
+    public static function openConnection($serverName,$userName,$password){ 
         
         $connectionString= new PDO("mysql:host=$serverName;dbname=ara59", $userName, $password);
         // set the PDO error mode to exception
-        $connectionString->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        echo "Connected successfully <br>";
+        $connectionString->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);       
+        
+        return $connectionString;        
+    }
+    public static function fetchData($connectionString,$query){
         $stmt = $connectionString->prepare($query); 
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+    public static function closeConnection(){
+        $connectionString = null;        
+    }
     
     public function __destruct(){
-        $connectionString = null;  
-    }
+        $this->html .= '</body></html>';        
+        die($this->html);
+    }  
 }
 
 class createHtml extends pdoConnection{
+    
     public function __construct($hmtlObj){
-        //$result=new pdoConnection($serverName,$userName,$password,$query);
-        //echo 'IN PDOCONNECTION CLASS';
-        $html='';
+        
+        $this->html.=createHtml::generateHtml($hmtlObj);        
+    }
+    
+    public function generateHtml($htmlEntity){
+        $html='';        
         $html='<table border="1">';
-        foreach($hmtlObj as $output){
+        $counter=0;
+        foreach($htmlEntity as $output){
           $html.='<tr>';
-          foreach($output as $data)
-            {            
-            $html.='<td>'.$data.'</td>';                      
-            }
-          $html.='</tr>';
+          foreach($output as $data){            
+              $html.='<td>'.$data.'</td>';                      
           }
-          $html.='</table>';        
-          echo $html;
+          $counter++;
+          $html.='</tr>';
+        }
+        $html.='</table>';        
+        stringFunctions::printMessage($counter);
+        return $html;        
+    }
+}
+
+class stringFunctions{
+    
+    public static function printMessage($message){
+        print($message);
     }
 }
 ?>
